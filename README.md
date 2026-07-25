@@ -40,8 +40,8 @@ It ingests Kiro activity CSV files from S3, enriches them with data from multipl
 
 ```bash
 # Clone the repo
-git clone https://github.com/<your-org>/dev-ai-tools-analytics.git
-cd dev-ai-tools-analytics
+git clone https://github.com/aws-samples/sample-prism-dashboard.git
+cd sample-prism-dashboard
 
 # Install dependencies
 cd cdk && npm install && cd ../frontend && npm install && cd ..
