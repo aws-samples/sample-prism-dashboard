@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# CDK
+*.js
+!jest.config.js
+*.d.ts
+.cdk.staging
+cdk.out
+
+# Frontend build
+cdk/frontend/build/
+cdk/frontend/node_modules/
+frontend/themed/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.hypothesis/
+
+# Kiro
+.kiro/specs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
