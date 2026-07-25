@@ -127,6 +127,7 @@ export class PrismDashboardStack extends cdk.Stack {
       { id: 'AwsSolutions-APIG4', reason: 'Root resource ANY method is created by CORS preflight; all API traffic routes through {proxy+} which has Cognito authorizer' },
       { id: 'AwsSolutions-COG4', reason: 'Root resource ANY method is created by CORS preflight; all API traffic routes through {proxy+} which has Cognito authorizer' },
       { id: 'AwsSolutions-COG3', reason: 'Not needed' },
+      { id: 'AwsSolutions-COG8', reason: 'Plus tier / advanced security features are a paid option left to deployer discretion for this sample (same rationale as COG3)' },
       { id: 'AwsSolutions-CFR4', reason: 'Using default CloudFront domain with TLS_V1_2_2021 minimum protocol; custom certificate requires a custom domain which is not configured for this self-hosted deployment' },
       { id: 'AwsSolutions-CFR3', reason: 'API access logging already enabled via API Gateway CloudWatch access logs and S3 access logs on assets bucket' },
     ], true);
