@@ -1,5 +1,7 @@
 # Prism Dashboard
 
+![Architecture Diagram](prism-dashboard.png)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > **⚠️ Sample Project — Not Production-Ready**
