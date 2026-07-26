@@ -133,7 +133,26 @@ def write_daily_aggregations(user, active_sources, start_date, end_date):
                     aggregation[k] = Decimal(str(v))
                 elif isinstance(v, int) and not isinstance(v, bool):
                     aggregation[k] = Decimal(str(v))
-            aggregations_table.put_item(Item=aggregation)
+            # Use update_item to SET only the fields we fetched this run,
+            # preserving existing fields from sources that weren't fetched
+            # (e.g., a source with broken auth won't wipe another source's data).
+            update_fields = {k: v for k, v in aggregation.items() if k not in ("userId", "date")}
+            if update_fields:
+                expr_names = {}
+                expr_values = {}
+                set_parts = []
+                for i, (k, v) in enumerate(update_fields.items()):
+                    name_key = f"#f{i}"
+                    val_key = f":v{i}"
+                    expr_names[name_key] = k
+                    expr_values[val_key] = v
+                    set_parts.append(f"{name_key} = {val_key}")
+                aggregations_table.update_item(
+                    Key={"userId": stable_uid, "date": date_str},
+                    UpdateExpression="SET " + ", ".join(set_parts),
+                    ExpressionAttributeNames=expr_names,
+                    ExpressionAttributeValues=expr_values,
+                )
             # User-derived global keys are rebuilt by the regenerator Lambda
             # from user rows (single writer) — no incremental global ADD here.
 
