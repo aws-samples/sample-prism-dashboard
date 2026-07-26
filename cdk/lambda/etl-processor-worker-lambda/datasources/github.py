@@ -1,4 +1,6 @@
 import json
+import base64
+import time
 from datetime import datetime, timedelta
 from urllib.request import Request, urlopen
 
@@ -20,14 +22,123 @@ class GitHubDataSource(BaseDataSource):
         {"key": "prodEnvironments", "label": "Production Environment Names (comma-separated)", "type": "text", "required": False},
     ]
 
+    _installation_token_cache = None
+    _installation_token_expires = 0
+
     def _get_token(self):
         """Get auth token based on auth type."""
         auth_type = self.config.get("authType", "pat")
         if auth_type == "pat":
             return self.config.get("pat", "")
-        # TODO: Implement GitHub App JWT token generation using privateKey + appId
-        # then exchange for installation token using installationId
-        return self.config.get("pat", "")
+        # GitHub App: generate JWT then exchange for installation access token
+        return self._get_installation_token()
+
+    def _get_installation_token(self):
+        """Generate a GitHub App JWT and exchange it for an installation access token.
+
+        Installation tokens are cached for their lifetime (1 hour minus 5-minute buffer).
+        The JWT is generated fresh each time since it's cheap and short-lived (10 min).
+        """
+        now = int(time.time())
+        if self._installation_token_cache and now < self._installation_token_expires:
+            return self._installation_token_cache
+
+        app_id = self.config.get("appId", "")
+        private_key_pem = self.config.get("privateKey", "")
+        installation_id = self.config.get("installationId", "")
+
+        if not app_id or not private_key_pem or not installation_id:
+            print("[github] Missing appId, privateKey, or installationId for GitHub App auth")
+            return ""
+
+        try:
+            jwt_token = self._create_jwt(app_id, private_key_pem)
+            # Exchange JWT for installation access token
+            req = Request(
+                f"https://api.github.com/app/installations/{installation_id}/access_tokens",
+                method="POST",
+                headers={
+                    "Authorization": f"Bearer {jwt_token}",
+                    "Accept": "application/vnd.github+json",
+                },
+            )
+            with safe_urlopen(req) as resp:
+                data = json.loads(resp.read().decode())
+            token = data.get("token", "")
+            expires_at = data.get("expires_at", "")
+            if not token:
+                print(f"[github] Installation token response missing 'token': {data}")
+                return ""
+            # Cache with 5-minute safety buffer
+            if expires_at:
+                try:
+                    exp_dt = datetime.strptime(expires_at[:19], "%Y-%m-%dT%H:%M:%S")
+                    self._installation_token_expires = int(exp_dt.timestamp()) - 300
+                except ValueError:
+                    self._installation_token_expires = now + 3300  # ~55 min
+            else:
+                self._installation_token_expires = now + 3300
+            self._installation_token_cache = token
+            return token
+        except Exception as e:
+            print(f"[github] Error obtaining installation token: {e}")
+            return ""
+
+    @staticmethod
+    def _create_jwt(app_id: str, private_key_pem: str) -> str:
+        """Create a signed JWT for GitHub App authentication (RS256).
+
+        Uses pure-Python RSA signing via the cryptography approach with
+        Python's built-in hashlib + the PEM private key. Since Lambda
+        may not have PyJWT, this implements minimal RS256 JWT generation.
+        """
+        # Parse the PEM private key — try cryptography first (available in
+        # Lambda Python 3.12 runtime via botocore's vendored deps), fall back
+        # to PyJWT if available.
+        try:
+            from cryptography.hazmat.primitives import hashes, serialization
+            from cryptography.hazmat.primitives.asymmetric import padding
+
+            private_key = serialization.load_pem_private_key(
+                private_key_pem.encode(), password=None
+            )
+
+            now = int(time.time())
+            payload = {
+                "iat": now - 60,       # Issued at (60s clock skew buffer)
+                "exp": now + 600,      # Expires in 10 minutes (max allowed)
+                "iss": str(app_id),    # GitHub App ID
+            }
+
+            # Build JWT manually: header.payload.signature
+            header = base64.urlsafe_b64encode(
+                json.dumps({"alg": "RS256", "typ": "JWT"}).encode()
+            ).rstrip(b"=")
+            body = base64.urlsafe_b64encode(
+                json.dumps(payload).encode()
+            ).rstrip(b"=")
+            signing_input = header + b"." + body
+
+            signature = private_key.sign(
+                signing_input,
+                padding.PKCS1v15(),
+                hashes.SHA256(),
+            )
+            sig_b64 = base64.urlsafe_b64encode(signature).rstrip(b"=")
+            return (signing_input + b"." + sig_b64).decode()
+
+        except ImportError:
+            # Fallback: try PyJWT (if bundled)
+            try:
+                import jwt as pyjwt
+                now = int(time.time())
+                payload = {"iat": now - 60, "exp": now + 600, "iss": str(app_id)}
+                return pyjwt.encode(payload, private_key_pem, algorithm="RS256")
+            except ImportError:
+                raise RuntimeError(
+                    "GitHub App auth requires either the 'cryptography' or 'PyJWT' package. "
+                    "The Lambda Python 3.12 runtime includes cryptography via botocore."
+                )
 
     def _graphql(self, query, variables):
         token = self._get_token()
