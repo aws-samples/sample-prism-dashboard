@@ -60,6 +60,48 @@ def validate_datasource_auth(ds_type, config):
             result = _fetch_json("https://api.github.com/user", {"Authorization": f"bearer {token}"})
             return {"valid": True, "user": result.get("login", "")}
 
+        if ds_type == "github" and auth_type == "app":
+            app_id = config.get("appId", "")
+            private_key = config.get("privateKey", "")
+            installation_id = config.get("installationId", "")
+            if not all([app_id, private_key, installation_id]):
+                return None
+            # Validate the private key is parseable PEM
+            try:
+                from cryptography.hazmat.primitives import serialization
+                serialization.load_pem_private_key(private_key.encode(), password=None)
+            except Exception as e:
+                raise Exception(f"Invalid private key PEM: {e}")
+            # Generate JWT and verify against GitHub
+            import time as _time
+            import base64 as _b64
+            from cryptography.hazmat.primitives import hashes
+            from cryptography.hazmat.primitives.asymmetric import padding
+            pk = serialization.load_pem_private_key(private_key.encode(), password=None)
+            now = int(_time.time())
+            payload_dict = {"iat": now - 60, "exp": now + 300, "iss": str(app_id)}
+            header = _b64.urlsafe_b64encode(json.dumps({"alg": "RS256", "typ": "JWT"}).encode()).rstrip(b"=")
+            body_b = _b64.urlsafe_b64encode(json.dumps(payload_dict).encode()).rstrip(b"=")
+            signing_input = header + b"." + body_b
+            sig = pk.sign(signing_input, padding.PKCS1v15(), hashes.SHA256())
+            jwt_token = (signing_input + b"." + _b64.urlsafe_b64encode(sig).rstrip(b"=")).decode()
+            result = _fetch_json(
+                f"https://api.github.com/app/installations/{installation_id}",
+                {"Authorization": f"Bearer {jwt_token}", "Accept": "application/vnd.github+json"},
+            )
+            return {"valid": True, "user": f"App: {result.get('app_slug', app_id)}"}
+
+        if ds_type == "claude_api":
+            api_key = config.get("apiKey", "")
+            if not api_key:
+                return None
+            # Anthropic Admin API — list workspace members (lightweight, read-only)
+            result = _fetch_json(
+                "https://api.anthropic.com/v1/organizations/users?limit=1",
+                {"x-api-key": api_key, "anthropic-version": "2023-06-01"},
+            )
+            return {"valid": True, "user": "Admin API Key"}
+
         if ds_type == "gitlab" and auth_type == "pat":
             token = config.get("pat", "")
             url = (config.get("url") or "https://gitlab.com").rstrip("/")
