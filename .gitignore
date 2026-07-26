@@ -27,6 +27,7 @@ cdk/lambda/*/cffi-*.dist-info/
 cdk/lambda/*/pycparser/
 cdk/lambda/*/pycparser-*.dist-info/
 cdk/lambda/*/typing_extensions-*.dist-info/
+cdk/lambda/*/typing_extensions.py
 cdk/lambda/*/_cffi_backend*.so
 
 # Kiro
