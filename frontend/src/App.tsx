@@ -17,6 +17,7 @@ import JiraActivityPage from './pages/JiraActivityPage';
 import GlobalMetricsPage from './pages/GlobalMetricsPage';
 import DoraPage from './pages/DoraPage';
 import TeamsAdminPage from './pages/TeamsAdminPage';
+import MyProfilePage from './pages/MyProfilePage';
 import { usersApi } from './api';
 import { getRangeOptions, getRangeLabel } from './dateRanges';
 import { useDataSourceFlags } from './useDataSourceFlags';
@@ -156,6 +157,7 @@ function DashboardContent({ username, callerRole, callerEmail, callerRecord, onS
       case 'user-management': return <UserManagementPage />;
       case 'teams-admin': return <TeamsAdminPage />;
       case 'data-sources': return <DataSourcesPage key={refreshKey} />;
+      case 'my-profile': return <MyProfilePage />;
       default: return <GlobalMetricsPage />;
     }
   };
@@ -177,11 +179,13 @@ function DashboardContent({ username, callerRole, callerEmail, callerRecord, onS
             text: username,
             iconName: 'user-profile',
             items: [
+              { id: 'my-profile', text: 'My Profile' },
               { id: 'refresh-my-data', text: 'Refresh My Data' },
               { id: 'signout', text: 'Sign out' },
             ],
             onItemClick: ({ detail }: any) => {
               if (detail.id === 'signout') onSignOut();
+              if (detail.id === 'my-profile') setActivePage('my-profile');
               if (detail.id === 'refresh-my-data') {
                 const startDate = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
                 import('./api').then(({ usersApi }) => {

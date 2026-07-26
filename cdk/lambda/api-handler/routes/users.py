@@ -109,6 +109,13 @@ def handle_users(method, path, event, email, query_params, caller_email=None,
         body = sanitize_dict(body)
         body.pop("email", None)  # Don't update the partition key
 
+        # Non-admin users can only update their own data source identifiers
+        if caller_role != "admin":
+            SELF_WRITABLE_FIELDS = {"githubUser", "gitlabUser", "jiraUser", "asanaUser", "claudeApiUser", "name"}
+            disallowed = set(body.keys()) - SELF_WRITABLE_FIELDS
+            if disallowed:
+                return respond(403, {"message": f"You can only update: {', '.join(sorted(SELF_WRITABLE_FIELDS))}. Cannot set: {', '.join(sorted(disallowed))}"})
+
         # Admin-specific validation for team/teamRole fields
         if caller_role == "admin":
             err = _validate_team_fields(body)
