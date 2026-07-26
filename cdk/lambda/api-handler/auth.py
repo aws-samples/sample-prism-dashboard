@@ -84,6 +84,7 @@ ENDPOINT_TIERS = {
     ("GET", "/claude-activity/{email}"): TIER_DATA_SCOPED,
     # Aggregates & metadata
     ("GET", "/global-aggregations"): TIER_AUTHENTICATED,
+    ("GET", "/etl-status"): TIER_AUTHENTICATED,
     ("GET", "/dora-metrics"): TIER_AUTHENTICATED,   # handler checks ?team=
     ("GET", "/sprint-snapshots"): TIER_AUTHENTICATED,
     ("GET", "/sprint-aggregations"): TIER_AUTHENTICATED,

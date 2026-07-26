@@ -38,6 +38,7 @@ export const usersApi = {
     apiRequest('users/refresh', { method: 'POST', body: JSON.stringify({ startDate }) }),
   refresh: (email: string, startDate: string) =>
     apiRequest(`users/${encodeURIComponent(email)}/refresh`, { method: 'POST', body: JSON.stringify({ startDate }) }),
+  etlStatus: () => apiRequest('etl-status'),
 };
 
 export const activityApi = {

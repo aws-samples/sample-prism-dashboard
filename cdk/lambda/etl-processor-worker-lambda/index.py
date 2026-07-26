@@ -113,6 +113,29 @@ def handler(event, context):
             ExpressionAttributeValues={":d": last_processed_date},
         )
 
+        # Update ETL status: increment usersCompleted, mark as completed if last
+        if message.get("adminRefresh") and global_aggregations_table.table_name:
+            try:
+                result = global_aggregations_table.update_item(
+                    Key={"month": "ETL_STATUS", "date": "LATEST"},
+                    UpdateExpression="ADD usersCompleted :one",
+                    ExpressionAttributeValues={":one": 1},
+                    ReturnValues="ALL_NEW",
+                )
+                item = result.get("Attributes", {})
+                completed = int(item.get("usersCompleted", 0))
+                queued = int(item.get("usersQueued", 0))
+                if completed >= queued and queued > 0:
+                    from datetime import datetime as dt_cls, timezone as tz
+                    global_aggregations_table.update_item(
+                        Key={"month": "ETL_STATUS", "date": "LATEST"},
+                        UpdateExpression="SET #s = :s, completedAt = :t",
+                        ExpressionAttributeNames={"#s": "status"},
+                        ExpressionAttributeValues={":s": "completed", ":t": dt_cls.now(tz.utc).isoformat()},
+                    )
+            except Exception as e:
+                print(f"[etl-status] Error updating status: {e}")
+
         # Signal the regenerator (hourly rebuild; forced when adminRefresh)
         regen_signals.mark_globals_dirty(start_date)
         regen_signals.trigger_admin_regen(message)

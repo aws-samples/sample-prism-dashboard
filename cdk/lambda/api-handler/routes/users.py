@@ -246,6 +246,22 @@ def _handle_refresh_all(event, caller_email=None):
         queued += 1
 
     audit_log("REFRESH_ALL_USERS", caller_email or "unknown", details={"startDate": start_date, "usersQueued": queued})
+
+    # Write ETL status to GlobalAggregationsTable for visibility
+    if global_aggregations_table:
+        from datetime import datetime as dt_cls
+        global_aggregations_table.put_item(Item={
+            "month": "ETL_STATUS",
+            "date": "LATEST",
+            "status": "running",
+            "startedAt": dt_cls.now(timezone.utc).isoformat(),
+            "usersQueued": queued,
+            "usersCompleted": 0,
+            "errors": [],
+            "triggeredBy": caller_email or "unknown",
+            "startDate": start_date,
+        })
+
     return respond(200, {"message": f"Refresh queued for {queued} users from {start_date} to {today}"})
 
 

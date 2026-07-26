@@ -69,6 +69,8 @@ def handler(event, context):
         user_id = unquote(segments[1])
     elif len(segments) == 1 and segments[0] == "global-aggregations":
         path = "/global-aggregations"
+    elif len(segments) == 1 and segments[0] == "etl-status":
+        path = "/etl-status"
     elif len(segments) == 1 and segments[0] == "teams":
         path = "/teams"
     elif len(segments) == 1 and segments[0] == "team-aggregations":
@@ -207,6 +209,18 @@ def handler(event, context):
                              caller_email=caller_email, caller_role=caller_role, caller_record=caller_record)
         if result:
             return result
+
+        # ETL status endpoint
+        if method == "GET" and path == "/etl-status":
+            if global_aggregations_table:
+                status_item = global_aggregations_table.get_item(Key={"month": "ETL_STATUS", "date": "LATEST"}).get("Item")
+                if status_item:
+                    # Convert Decimal to int/float for JSON serialization
+                    for k in ("usersQueued", "usersCompleted"):
+                        if k in status_item:
+                            status_item[k] = int(status_item[k])
+                    return respond(200, status_item)
+            return respond(200, {"status": "idle", "message": "No ETL has been triggered yet"})
 
         return respond(400, {"message": "Unsupported operation"})
 

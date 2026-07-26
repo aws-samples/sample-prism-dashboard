@@ -11,6 +11,8 @@ import Modal from '@cloudscape-design/components/modal';
 import Box from '@cloudscape-design/components/box';
 import Table from '@cloudscape-design/components/table';
 import Select from '@cloudscape-design/components/select';
+import Checkbox from '@cloudscape-design/components/checkbox';
+import StatusIndicator from '@cloudscape-design/components/status-indicator';
 import { usersApi, platformTeamsApi } from '../api';
 import { useUserContext } from '../UserContext';
 
@@ -38,6 +40,8 @@ export default function UserManagementPage() {
   const [refreshLoading, setRefreshLoading] = useState(false);
   const [refreshError, setRefreshError] = useState('');
   const [refreshSuccess, setRefreshSuccess] = useState('');
+  const [forceRefresh, setForceRefresh] = useState(false);
+  const [etlStatus, setEtlStatus] = useState<any>(null);
   const [showUserRefreshModal, setShowUserRefreshModal] = useState(false);
   const [refreshUser, setRefreshUser] = useState<any>(null);
   const [userRefreshStartDate, setUserRefreshStartDate] = useState('');
@@ -58,6 +62,14 @@ export default function UserManagementPage() {
   };
 
   useEffect(() => { fetchUsers(); }, []);
+
+  // Poll ETL status
+  useEffect(() => {
+    const fetchStatus = () => usersApi.etlStatus().then(setEtlStatus).catch(() => {});
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 10000); // poll every 10s
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     platformTeamsApi.list()
@@ -298,7 +310,7 @@ export default function UserManagementPage() {
           <Box float="right">
             <SpaceBetween direction="horizontal" size="xs">
               <Button variant="link" onClick={() => setShowRefreshModal(false)}>Cancel</Button>
-              <Button variant="primary" onClick={handleSubmitRefresh} loading={refreshLoading} disabled={!refreshStartDate}>Refresh All</Button>
+              <Button variant="primary" onClick={handleSubmitRefresh} loading={refreshLoading} disabled={!refreshStartDate || (etlStatus?.status === 'running' && !forceRefresh)}>Refresh All</Button>
             </SpaceBetween>
           </Box>
         }
@@ -306,12 +318,27 @@ export default function UserManagementPage() {
         <SpaceBetween size="l">
           {refreshError && <Alert type="error" dismissible onDismiss={() => setRefreshError('')}>{refreshError}</Alert>}
           {refreshSuccess && <Alert type="success" dismissible onDismiss={() => setRefreshSuccess('')}>{refreshSuccess}</Alert>}
+          {etlStatus?.status === 'running' && (
+            <Alert type="warning">
+              An ETL is already in progress (started {etlStatus.startedAt ? new Date(etlStatus.startedAt).toLocaleTimeString() : 'recently'}, {etlStatus.usersCompleted || 0}/{etlStatus.usersQueued || '?'} users completed). Check the box below to force a new refresh anyway.
+            </Alert>
+          )}
+          {etlStatus?.status === 'completed' && (
+            <Box variant="small" color="text-status-success">
+              <StatusIndicator type="success">Last refresh completed at {etlStatus.completedAt ? new Date(etlStatus.completedAt).toLocaleTimeString() : 'unknown'} ({etlStatus.usersCompleted || 0} users)</StatusIndicator>
+            </Box>
+          )}
           <Alert type="info">
             This will re-process data for all users from the selected date to today. Global aggregations for the affected dates will be cleared and recomputed.
           </Alert>
           <FormField label="Start Date" description="All user data will be refreshed from this date to today (YYYY-MM-DD)">
             <Input value={refreshStartDate} onChange={({ detail }) => setRefreshStartDate(detail.value)} placeholder="YYYY-MM-DD" />
           </FormField>
+          {etlStatus?.status === 'running' && (
+            <Checkbox checked={forceRefresh} onChange={({ detail }) => setForceRefresh(detail.checked)}>
+              Force refresh (override in-progress ETL)
+            </Checkbox>
+          )}
         </SpaceBetween>
       </Modal>
 
