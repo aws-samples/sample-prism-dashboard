@@ -66,30 +66,34 @@ def validate_datasource_auth(ds_type, config):
             installation_id = config.get("installationId", "")
             if not all([app_id, private_key, installation_id]):
                 return None
-            # Validate the private key is parseable PEM
             try:
-                from cryptography.hazmat.primitives import serialization
-                serialization.load_pem_private_key(private_key.encode(), password=None)
-            except Exception as e:
-                raise Exception(f"Invalid private key PEM: {e}")
-            # Generate JWT and verify against GitHub
-            import time as _time
-            import base64 as _b64
-            from cryptography.hazmat.primitives import hashes
-            from cryptography.hazmat.primitives.asymmetric import padding
-            pk = serialization.load_pem_private_key(private_key.encode(), password=None)
-            now = int(_time.time())
-            payload_dict = {"iat": now - 60, "exp": now + 300, "iss": str(app_id)}
-            header = _b64.urlsafe_b64encode(json.dumps({"alg": "RS256", "typ": "JWT"}).encode()).rstrip(b"=")
-            body_b = _b64.urlsafe_b64encode(json.dumps(payload_dict).encode()).rstrip(b"=")
-            signing_input = header + b"." + body_b
-            sig = pk.sign(signing_input, padding.PKCS1v15(), hashes.SHA256())
-            jwt_token = (signing_input + b"." + _b64.urlsafe_b64encode(sig).rstrip(b"=")).decode()
-            result = _fetch_json(
-                f"https://api.github.com/app/installations/{installation_id}",
-                {"Authorization": f"Bearer {jwt_token}", "Accept": "application/vnd.github+json"},
-            )
-            return {"valid": True, "user": f"App: {result.get('app_slug', app_id)}"}
+                from cryptography.hazmat.primitives import serialization, hashes
+                from cryptography.hazmat.primitives.asymmetric import padding
+                import time as _time
+                import base64 as _b64
+                pk = serialization.load_pem_private_key(private_key.encode(), password=None)
+                now = int(_time.time())
+                payload_dict = {"iat": now - 60, "exp": now + 300, "iss": str(app_id)}
+                header = _b64.urlsafe_b64encode(json.dumps({"alg": "RS256", "typ": "JWT"}).encode()).rstrip(b"=")
+                body_b = _b64.urlsafe_b64encode(json.dumps(payload_dict).encode()).rstrip(b"=")
+                signing_input = header + b"." + body_b
+                sig = pk.sign(signing_input, padding.PKCS1v15(), hashes.SHA256())
+                jwt_token = (signing_input + b"." + _b64.urlsafe_b64encode(sig).rstrip(b"=")).decode()
+                result = _fetch_json(
+                    f"https://api.github.com/app/installations/{installation_id}",
+                    {"Authorization": f"Bearer {jwt_token}", "Accept": "application/vnd.github+json"},
+                )
+                return {"valid": True, "user": f"App: {result.get('app_slug', app_id)}"}
+            except ImportError:
+                # cryptography not available in this Lambda — do basic format validation
+                pem = private_key.strip()
+                if not pem.startswith("-----BEGIN") or "-----END" not in pem:
+                    raise Exception("Private key does not look like a valid PEM file")
+                if not app_id.isdigit():
+                    raise Exception(f"App ID should be numeric, got: {app_id}")
+                if not installation_id.isdigit():
+                    raise Exception(f"Installation ID should be numeric, got: {installation_id}")
+                return {"valid": True, "user": f"App ID {app_id} (PEM format OK, full auth verified on first ETL run)"}
 
         if ds_type == "claude_api":
             api_key = config.get("apiKey", "")
