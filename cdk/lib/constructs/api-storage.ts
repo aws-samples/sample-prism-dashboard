@@ -161,25 +161,7 @@ export class APIStorage extends Construct {
       runtime: lambda.Runtime.PYTHON_3_12,
       memorySize: 1024, // CPU scales with memory — span-heavy endpoints are CPU-bound at 128MB
       handler: 'index.handler',
-      code: lambda.Code.fromAsset('lambda/api-handler', {
-        followSymlinks: SymlinkFollowMode.ALWAYS,
-        bundling: {
-          image: lambda.Runtime.PYTHON_3_12.bundlingImage,
-          local: {
-            tryBundle(outputDir: string) {
-              const { execSync } = require('child_process');
-              const path = require('path');
-              const sourceDir = path.join(__dirname, '../../lambda/api-handler');
-              execSync(
-                `pip install -r ${path.join(sourceDir, 'requirements.txt')} -t ${outputDir} --platform manylinux2014_x86_64 --only-binary=:all: --python-version 3.12 -q && cp -a ${sourceDir}/. ${outputDir}/`,
-                { stdio: 'inherit' },
-              );
-              return true;
-            },
-          },
-          command: ['bash', '-c', 'pip install -r requirements.txt -t /asset-output && cp -au . /asset-output'],
-        },
-      }),
+      code: lambda.Code.fromAsset('lambda/api-handler', { followSymlinks: SymlinkFollowMode.ALWAYS }),
       timeout: Duration.seconds(60),
       reservedConcurrentExecutions: 25,
       environment: {
