@@ -18,6 +18,8 @@ export interface DsAuthOption {
   value: string;
   label: string;
   description: string;
+  /** Optional step-by-step setup guide shown in the wizard's configuration step. */
+  setupGuide?: string;
 }
 
 /** Wizard/step-3 config field. `forAuth` limits the field to one auth type. */
@@ -108,8 +110,10 @@ export const DATA_SOURCE_REGISTRY: DataSourceDefinition[] = [
     wizard: true,
     icon: GITHUB_ICON,
     authOptions: [
-      { value: 'pat', label: 'Personal Access Token', description: 'Use a GitHub PAT for authentication' },
-      { value: 'app', label: 'GitHub App', description: 'Use a GitHub App with installation credentials' },
+      { value: 'pat', label: 'Personal Access Token', description: 'Use a GitHub PAT for authentication',
+        setupGuide: 'GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token. Grant read-only: Contents, Pull requests, Deployments. For team discovery, add Organization: Members (read). Classic token equivalent: repo + read:org.' },
+      { value: 'app', label: 'GitHub App', description: 'Use a GitHub App with installation credentials',
+        setupGuide: 'Org Settings → Developer settings → GitHub Apps → New GitHub App. Permissions (read-only): Contents, Pull requests, Deployments; Organization: Members. Uncheck Webhook. After creation, note the App ID and generate a Private Key (.pem). Then Install the app on your org and note the Installation ID from the URL.' },
     ],
     configFields: [
       { key: 'pat', label: 'Personal Access Token', type: 'password', required: true, forAuth: 'pat' },
@@ -129,8 +133,10 @@ export const DATA_SOURCE_REGISTRY: DataSourceDefinition[] = [
     wizard: true,
     icon: GITLAB_ICON,
     authOptions: [
-      { value: 'pat', label: 'Personal Access Token', description: 'Use a GitLab PAT for authentication' },
-      { value: 'app', label: 'OAuth App', description: 'Use an OAuth application for authorization' },
+      { value: 'pat', label: 'Personal Access Token', description: 'Use a GitLab PAT for authentication',
+        setupGuide: 'GitLab → User Settings → Access tokens → Add new token. Scope: read_api (covers commits, MRs, deployments, group membership). For self-managed GitLab, also set the GitLab URL field below.' },
+      { value: 'app', label: 'OAuth App', description: 'Use an OAuth application for authorization',
+        setupGuide: 'GitLab → User Settings → Applications → Add new application. Redirect URI: https://<your-cloudfront-domain>/oauth-callback. Scope: read_api. Copy Application ID → Client ID and Secret → Client Secret. After saving here, click Authorize on the data source row.' },
     ],
     configFields: [
       { key: 'pat', label: 'Personal Access Token', type: 'password', required: true, forAuth: 'pat' },
@@ -152,8 +158,10 @@ export const DATA_SOURCE_REGISTRY: DataSourceDefinition[] = [
     wizard: true,
     icon: JIRA_ICON,
     authOptions: [
-      { value: 'pat', label: 'API Token', description: 'Use a Jira API token with email' },
-      { value: 'app', label: 'OAuth 2.0 App', description: 'Use OAuth 2.0 for Jira Cloud' },
+      { value: 'pat', label: 'API Token', description: 'Use a Jira API token with email',
+        setupGuide: 'Sign in at id.atlassian.com → Security → Create and manage API tokens → Create API token. Use your Atlassian account email and the token below. The account needs browse access to the Jira projects you want tracked.' },
+      { value: 'app', label: 'OAuth 2.0 App', description: 'Use OAuth 2.0 for Jira Cloud',
+        setupGuide: 'Atlassian Developer Console (developer.atlassian.com) → Create → OAuth 2.0 integration. Add Jira API scopes: read:jira-work, read:jira-user, offline_access. Set callback URL to https://<your-cloudfront-domain>/oauth-callback. Copy Client ID and Client Secret. After saving here, click Authorize on the data source row.' },
     ],
     configFields: [
       { key: 'apiToken', label: 'API Token', type: 'password', required: true, forAuth: 'pat' },
@@ -178,8 +186,10 @@ export const DATA_SOURCE_REGISTRY: DataSourceDefinition[] = [
     wizard: true,
     icon: ASANA_ICON,
     authOptions: [
-      { value: 'pat', label: 'Personal Access Token', description: 'Use an Asana PAT for authentication' },
-      { value: 'app', label: 'OAuth App', description: 'Use an OAuth application for authorization' },
+      { value: 'pat', label: 'Personal Access Token', description: 'Use an Asana PAT for authentication',
+        setupGuide: 'Asana → Settings → Apps → Developer apps → Manage developer apps → Create new token. The Workspace ID is required: find it at app.asana.com/api/1.0/workspaces (the gid value).' },
+      { value: 'app', label: 'OAuth App', description: 'Use an OAuth application for authorization',
+        setupGuide: 'developers.asana.com → My apps → Create new app. OAuth → Redirect URL: https://<your-cloudfront-domain>/oauth-callback. Copy Client ID and Client Secret. After saving here, click Authorize on the data source row.' },
     ],
     configFields: [
       { key: 'pat', label: 'Personal Access Token', type: 'password', required: true, forAuth: 'pat' },
@@ -201,7 +211,8 @@ export const DATA_SOURCE_REGISTRY: DataSourceDefinition[] = [
     wizard: true,
     icon: CLAUDE_ICON,
     authOptions: [
-      { value: 'apikey', label: 'Admin API Key', description: 'Use an Anthropic Admin API key' },
+      { value: 'apikey', label: 'Admin API Key', description: 'Use an Anthropic Admin API key',
+        setupGuide: 'Anthropic Console → Settings → Organization → Admin keys (org admin required). Create an Admin API key (sk-ant-admin…). This is distinct from regular inference API keys — it grants read access to org-wide usage and cost data.' },
     ],
     configFields: [
       { key: 'apiKey', label: 'Admin API Key', type: 'password', required: true },

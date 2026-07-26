@@ -74,6 +74,10 @@ export default function AddDataSourceWizard({ visible, onDismiss, onSubmit }: Ad
       )
     : [];
 
+  /* setup guide for the selected auth option */
+  const selectedAuthDef = authOptions.find((a) => a.value === selectedAuth);
+  const setupGuide = selectedAuthDef?.setupGuide || '';
+
   const isStep3Valid = visibleFields
     .filter((f) => f.required)
     .every((f) => !!configValues[f.key]);
@@ -199,6 +203,11 @@ export default function AddDataSourceWizard({ visible, onDismiss, onSubmit }: Ad
             isOptional: false,
             content: (
               <SpaceBetween size="l">
+                {setupGuide && (
+                  <Alert type="info" header="How to get these credentials">
+                    {setupGuide}
+                  </Alert>
+                )}
                 {submitError && (
                   <Alert type="error" dismissible onDismiss={() => setSubmitError('')}>
                     {submitError}
