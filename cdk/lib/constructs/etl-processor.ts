@@ -135,7 +135,7 @@ export class ETLProcessor extends Construct {
     });
 
 
-    // ETL orchestrator Lambda — scans users, sends SQS messages
+    // ETL orchestrator Lambda — invokes the unified refresh path
     this.etlLambda = new lambda.Function(this, `ETLLambda-${stageName}`, {
       runtime: lambda.Runtime.PYTHON_3_12,
       handler: 'index.handler',

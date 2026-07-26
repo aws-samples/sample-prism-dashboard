@@ -117,30 +117,36 @@ def handler(event, context):
     if caller_email is None:
         return respond(401, {"message": "Could not determine caller identity"})
 
-    caller_result = table.get_item(Key={"email": caller_email})
-    caller_record = caller_result.get("Item")
+    # Internal system caller (ETL orchestrator Lambda invoke) — bypass user lookup
+    if caller_email == "system@scheduled-etl" and not event.get("requestContext", {}).get("domainName"):
+        # Not from API Gateway (no domain) — trusted internal invocation
+        caller_record = {"email": caller_email, "role": "admin"}
+        caller_role = "admin"
+    else:
+        caller_result = table.get_item(Key={"email": caller_email})
+        caller_record = caller_result.get("Item")
 
-    if not caller_record:
-        scan_result = table.scan(Limit=1)
-        if scan_result.get("Count", 0) == 0:
-            initial_admin = os.environ.get("INITIAL_ADMIN_EMAIL", "")
-            if not initial_admin:
-                return respond(403, {"message": "No INITIAL_ADMIN_EMAIL configured. Set it in the CDK config to bootstrap the first admin."})
-            if caller_email != initial_admin:
+        if not caller_record:
+            scan_result = table.scan(Limit=1)
+            if scan_result.get("Count", 0) == 0:
+                initial_admin = os.environ.get("INITIAL_ADMIN_EMAIL", "")
+                if not initial_admin:
+                    return respond(403, {"message": "No INITIAL_ADMIN_EMAIL configured. Set it in the CDK config to bootstrap the first admin."})
+                if caller_email != initial_admin:
+                    return respond(403, {"message": "User not registered. Contact an admin."})
+                caller_record = {"email": caller_email, "role": "admin", "status": "Active",
+                                 "userId": str(uuid.uuid4())}
+                table.put_item(Item=caller_record)
+                audit_log("FIRST_USER_BOOTSTRAP", caller_email, target=caller_email, details={"role": "admin"})
+            elif os.environ.get("ALLOW_SELF_REGISTRATION") == "true":
+                caller_record = {"email": caller_email, "role": "user", "status": "Active",
+                                 "userId": str(uuid.uuid4())}
+                table.put_item(Item=caller_record)
+                audit_log("SELF_REGISTRATION", caller_email, target=caller_email, details={"role": "user"})
+            else:
                 return respond(403, {"message": "User not registered. Contact an admin."})
-            caller_record = {"email": caller_email, "role": "admin", "status": "Active",
-                             "userId": str(uuid.uuid4())}
-            table.put_item(Item=caller_record)
-            audit_log("FIRST_USER_BOOTSTRAP", caller_email, target=caller_email, details={"role": "admin"})
-        elif os.environ.get("ALLOW_SELF_REGISTRATION") == "true":
-            caller_record = {"email": caller_email, "role": "user", "status": "Active",
-                             "userId": str(uuid.uuid4())}
-            table.put_item(Item=caller_record)
-            audit_log("SELF_REGISTRATION", caller_email, target=caller_email, details={"role": "user"})
-        else:
-            return respond(403, {"message": "User not registered. Contact an admin."})
 
-    caller_role = resolve_role(caller_record)
+        caller_role = resolve_role(caller_record)
 
     # --- Endpoint authorization (single source: auth.ENDPOINT_TIERS,
     # default-deny — unregistered endpoints 403 for non-admins) ---

@@ -211,28 +211,30 @@ def _build_user_message(user, start_date, today, yesterday):
 
 
 def _handle_refresh_all(event, caller_email=None):
-    """POST /users/refresh — refresh all users from a start date."""
+    """POST /users/refresh — unified ETL refresh (admin or scheduled).
+
+    - If body has startDate: backfill all users from that date (admin use case)
+    - If body is empty or has no startDate: incremental per-user refresh using
+      each user's lastProcessedDate (scheduled/EventBridge use case)
+    """
     etl_queue_url = os.environ.get("ETL_QUEUE_URL", "")
     if not etl_queue_url:
         return respond(400, {"message": "ETL queue not configured"})
-    body = json.loads(event["body"])
-    start_date = body.get("startDate", "")
-    if not start_date:
-        return respond(400, {"message": "startDate is required"})
-    err = validate_date(start_date, "startDate")
-    if err:
-        return respond(400, {"message": err})
 
-    # Enforce maximum lookback to prevent resource exhaustion
-    earliest_allowed = (datetime.now(timezone.utc) - timedelta(days=MAX_REFRESH_DAYS)).strftime("%Y-%m-%d")
-    if start_date < earliest_allowed:
-        return respond(400, {"message": f"startDate cannot be more than {MAX_REFRESH_DAYS} days ago (earliest: {earliest_allowed})"})
+    body = json.loads(event.get("body") or "{}")
+    custom_start = body.get("startDate", "")
+
+    # Validate custom startDate if provided
+    if custom_start:
+        err = validate_date(custom_start, "startDate")
+        if err:
+            return respond(400, {"message": err})
+        earliest_allowed = (datetime.now(timezone.utc) - timedelta(days=MAX_REFRESH_DAYS)).strftime("%Y-%m-%d")
+        if custom_start < earliest_allowed:
+            return respond(400, {"message": f"startDate cannot be more than {MAX_REFRESH_DAYS} days ago (earliest: {earliest_allowed})"})
 
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
-
-    # Global user-derived keys are rebuilt by the regenerator (workers set the
-    # dirty marker; adminRefresh triggers an immediate forced regen).
 
     all_users = paginated_scan(table)
     sqs_client = boto3.client("sqs")
@@ -240,15 +242,39 @@ def _handle_refresh_all(event, caller_email=None):
     for user in all_users:
         if not user.get("email", ""):
             continue
-        msg = _build_user_message(user, start_date, today, yesterday)
+
+        # Determine startDate per user
+        if custom_start:
+            # Admin backfill: same date for all users
+            user_start = custom_start
+        else:
+            # Scheduled/incremental: per-user based on lastProcessedDate
+            last_processed = user.get("lastProcessedDate", "")
+            if last_processed and last_processed >= yesterday:
+                continue  # Already current, skip
+            elif last_processed:
+                # Start from day after last processed
+                try:
+                    user_start = (datetime.strptime(last_processed, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%d")
+                except ValueError:
+                    user_start = yesterday
+            else:
+                # First run: start from yesterday
+                user_start = yesterday
+
+        msg = _build_user_message(user, user_start, today, yesterday)
         msg["adminRefresh"] = True
         sqs_client.send_message(QueueUrl=etl_queue_url, MessageBody=json.dumps(msg))
         queued += 1
 
-    audit_log("REFRESH_ALL_USERS", caller_email or "unknown", details={"startDate": start_date, "usersQueued": queued})
+    trigger_source = caller_email or "scheduled"
+    audit_log("REFRESH_ALL_USERS", trigger_source, details={
+        "startDate": custom_start or "incremental",
+        "usersQueued": queued,
+    })
 
     # Write ETL status to GlobalAggregationsTable for visibility
-    if global_aggregations_table:
+    if global_aggregations_table and queued > 0:
         from datetime import datetime as dt_cls
         global_aggregations_table.put_item(Item={
             "month": "ETL_STATUS",
@@ -258,11 +284,11 @@ def _handle_refresh_all(event, caller_email=None):
             "usersQueued": queued,
             "usersCompleted": 0,
             "errors": [],
-            "triggeredBy": caller_email or "unknown",
-            "startDate": start_date,
+            "triggeredBy": trigger_source,
+            "startDate": custom_start or "incremental",
         })
 
-    return respond(200, {"message": f"Refresh queued for {queued} users from {start_date} to {today}"})
+    return respond(200, {"message": f"Refresh queued for {queued} users from {custom_start or 'incremental'} to {today}"})
 
 
 _AGG_FIELDS = [

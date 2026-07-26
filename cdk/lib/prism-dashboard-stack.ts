@@ -100,6 +100,10 @@ export class PrismDashboardStack extends cdk.Stack {
     apiStorage.tableKey.grantDecrypt(etlProcessor.etlLambda);
     etlProcessor.etlLambda.addEnvironment('USER_TABLE_NAME', apiStorage.table.tableName);
 
+    // Orchestrator invokes the API handler for the unified refresh path
+    apiStorage.apiHandler.grantInvoke(etlProcessor.etlLambda);
+    etlProcessor.etlLambda.addEnvironment('API_HANDLER_ARN', apiStorage.apiHandler.functionArn);
+
     // Grant ETL worker read/write on User table
     apiStorage.table.grantReadWriteData(etlProcessor.workerLambda);
     // Regenerator reads the user directory and stamps coverage metadata
