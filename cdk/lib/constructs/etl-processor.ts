@@ -157,7 +157,25 @@ export class ETLProcessor extends Construct {
     this.workerLambda = new lambda.Function(this, `ETLWorkerLambda-${stageName}`, {
       runtime: lambda.Runtime.PYTHON_3_12,
       handler: 'index.handler',
-      code: lambda.Code.fromAsset('lambda/etl-processor-worker-lambda', { followSymlinks: SymlinkFollowMode.ALWAYS }),
+      code: lambda.Code.fromAsset('lambda/etl-processor-worker-lambda', {
+        followSymlinks: SymlinkFollowMode.ALWAYS,
+        bundling: {
+          image: lambda.Runtime.PYTHON_3_12.bundlingImage,
+          local: {
+            tryBundle(outputDir: string) {
+              const { execSync } = require('child_process');
+              const path = require('path');
+              const sourceDir = path.join(__dirname, '../../lambda/etl-processor-worker-lambda');
+              execSync(
+                `pip install -r ${path.join(sourceDir, 'requirements.txt')} -t ${outputDir} --platform manylinux2014_x86_64 --only-binary=:all: --python-version 3.12 -q && cp -a ${sourceDir}/. ${outputDir}/`,
+                { stdio: 'inherit' },
+              );
+              return true;
+            },
+          },
+          command: ['bash', '-c', 'pip install -r requirements.txt -t /asset-output && cp -au . /asset-output'],
+        },
+      }),
       timeout: Duration.seconds(300),
       // Cap concurrent workers: all workers share the org's GitHub PAT /
       // Jira token, so an unbounded refresh-all fan-out risks upstream
