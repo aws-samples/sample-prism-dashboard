@@ -19,6 +19,16 @@ __pycache__/
 .venv/
 .hypothesis/
 
+# Python Lambda dependencies (pip install --target, not committed)
+cdk/lambda/*/cryptography/
+cdk/lambda/*/cryptography-*.dist-info/
+cdk/lambda/*/cffi/
+cdk/lambda/*/cffi-*.dist-info/
+cdk/lambda/*/pycparser/
+cdk/lambda/*/pycparser-*.dist-info/
+cdk/lambda/*/typing_extensions-*.dist-info/
+cdk/lambda/*/_cffi_backend*.so
+
 # Kiro
 .kiro/specs/
 

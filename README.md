@@ -48,6 +48,10 @@ cd sample-prism-dashboard
 # Install dependencies
 cd cdk && npm install && cd ../frontend && npm install && cd ..
 
+# Install Python Lambda dependencies (required for GitHub App JWT auth)
+pip install cryptography --target cdk/lambda/api-handler/ --platform manylinux2014_x86_64 --only-binary=:all: --python-version 3.12 -q
+pip install cryptography --target cdk/lambda/etl-processor-worker-lambda/ --platform manylinux2014_x86_64 --only-binary=:all: --python-version 3.12 -q
+
 # Configure your environment
 # Edit cdk/configs/env.ts with your AWS account ID, region, and Cognito domain prefix
 # Set initialAdminEmail to lock down the first admin user:
