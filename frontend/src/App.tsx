@@ -176,9 +176,22 @@ function DashboardContent({ username, callerRole, callerEmail, callerRecord, onS
             type: 'menu-dropdown',
             text: username,
             iconName: 'user-profile',
-            items: [{ id: 'signout', text: 'Sign out' }],
+            items: [
+              { id: 'refresh-my-data', text: 'Refresh My Data' },
+              { id: 'signout', text: 'Sign out' },
+            ],
             onItemClick: ({ detail }: any) => {
               if (detail.id === 'signout') onSignOut();
+              if (detail.id === 'refresh-my-data') {
+                const startDate = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
+                import('./api').then(({ usersApi }) => {
+                  usersApi.refresh(callerEmail, startDate).then(() => {
+                    alert('Refresh queued — your data will update in a few minutes.');
+                  }).catch((err: any) => {
+                    alert(`Refresh failed: ${err.message || 'unknown error'}`);
+                  });
+                });
+              }
             },
           },
         ]}

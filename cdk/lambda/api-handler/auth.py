@@ -75,7 +75,7 @@ ENDPOINT_TIERS = {
     ("DELETE", "/users/{email}"): TIER_ADMIN,
     ("POST", "/users/sync"): TIER_ADMIN,
     ("POST", "/users/refresh"): TIER_ADMIN,
-    ("POST", "/users/{email}/refresh"): TIER_ADMIN,
+    ("POST", "/users/{email}/refresh"): TIER_SELF_OR_ADMIN,
     # Per-user data (index.py runs the team/data-access DB check)
     ("GET", "/activity/{userId}"): TIER_DATA_SCOPED,
     ("GET", "/aggregations/{userId}"): TIER_DATA_SCOPED,
