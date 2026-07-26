@@ -30,7 +30,7 @@ A self-hosted analytics platform for tracking developer productivity and AI tool
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 22+ (20.19+ minimum, required by Vite)
 - Python 3.12+
 - AWS CDK CLI (`npm install -g aws-cdk`)
 - AWS credentials configured with sufficient permissions
@@ -309,7 +309,9 @@ This project implements multiple layers of security:
 │   │   │                 #   + resource-helpers.ts (shared CMK/table/access-log-bucket factories)
 │   │   └── prism-dashboard-stack.ts
 │   └── scripts/          # Utility scripts
-├── frontend/             # React dashboard (Cloudscape + Amplify v6)
+├── frontend/             # React dashboard (Vite + Cloudscape + Amplify v6)
+│   ├── index.html        # Vite entry point
+│   ├── vite.config.ts    # Vite build config (outputs to build/ for CDK deployment)
 │   └── src/
 │       ├── components/   # Shared components
 │       ├── pages/        # Page components

@@ -16,5 +16,6 @@ for (const [key, stage] of Object.entries(stages)) {
     cognitoDomainPrefix: stage.cognitoDomainPrefix,
     saml: stage.saml,
     allowSelfRegistration: stage.allowSelfRegistration,
+    initialAdminEmail: stage.initialAdminEmail,
   });
 }
