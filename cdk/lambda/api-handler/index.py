@@ -81,6 +81,9 @@ def handler(event, context):
     elif len(segments) == 3 and segments[0] == "datasources" and segments[2] == "oauth-callback":
         path = "/datasources/{dsId}/oauth-callback"
         path_params["dsId"] = unquote(segments[1])
+    elif len(segments) == 3 and segments[0] == "datasources" and segments[2] == "test":
+        path = "/datasources/{dsId}/test"
+        path_params["dsId"] = unquote(segments[1])
     elif len(segments) == 2 and segments[0] == "claude-activity":
         path = "/claude-activity/{email}"
         email = unquote(segments[1])

@@ -96,6 +96,8 @@ export const datasourcesApi = {
       method: 'POST',
       body: JSON.stringify({ code, redirectUri }),
     }),
+  test: (uuid: string) =>
+    apiRequest(`datasources/${encodeURIComponent(uuid)}/test`, { method: 'POST' }),
 };
 
 export const sprintAggregationsApi = {

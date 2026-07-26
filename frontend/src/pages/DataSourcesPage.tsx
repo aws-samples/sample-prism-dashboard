@@ -27,6 +27,8 @@ export default function DataSourcesPage() {
   const [editConfigValues, setEditConfigValues] = useState<Record<string, string>>({});
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState('');
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<{ uuid: string; success: boolean; message: string } | null>(null);
 
   const fetchSources = async () => {
     setLoading(true);
@@ -111,6 +113,19 @@ export default function DataSourcesPage() {
     window.location.href = `${oauthConfig.authorizeUrl(config)}?${params.toString()}`;
   };
 
+  const handleTest = async (item: any) => {
+    setTestingId(item.uuid);
+    setTestResult(null);
+    try {
+      const result = await datasourcesApi.test(item.uuid);
+      setTestResult({ uuid: item.uuid, success: result.success, message: result.message });
+    } catch (err: any) {
+      setTestResult({ uuid: item.uuid, success: false, message: err.message || 'Test failed' });
+    } finally {
+      setTestingId(null);
+    }
+  };
+
   // Handle OAuth callback on mount is done in App.tsx
 
   return (
@@ -140,12 +155,22 @@ export default function DataSourcesPage() {
             {
               id: 'actions', header: 'Actions', cell: (item: any) => (
                 <SpaceBetween direction="horizontal" size="xs">
+                  <Button variant="link" onClick={() => handleTest(item)} loading={testingId === item.uuid}>Test</Button>
                   <Button variant="link" onClick={() => handleEdit(item)}>Edit</Button>
                   <Button variant="link" onClick={() => handleDelete(item.uuid)}>Delete</Button>
                   {item.config?.authType === 'app' && getDsDefinition(item.dataSourceType)?.oauth && (
                     <Button variant="link" onClick={() => handleAuthorize(item)}>Authorize</Button>
                   )}
                 </SpaceBetween>
+              ),
+            },
+            {
+              id: 'testResult', header: '', cell: (item: any) => (
+                testResult && testResult.uuid === item.uuid ? (
+                  testResult.success
+                    ? <StatusIndicator type="success">{testResult.message}</StatusIndicator>
+                    : <StatusIndicator type="error">{testResult.message}</StatusIndicator>
+                ) : null
               ),
             },
           ]}

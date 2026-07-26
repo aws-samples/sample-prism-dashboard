@@ -154,6 +154,9 @@ def handle_datasources(method, path, event, path_params, caller_email=None):
     if method == "POST" and path == "/datasources/{dsId}/oauth-callback" and ds_id:
         return _oauth_callback(event, ds_id, caller_email)
 
+    if method == "POST" and path == "/datasources/{dsId}/test" and ds_id:
+        return _test_datasource(ds_id)
+
     if method == "DELETE" and path == "/datasources/{dsId}" and ds_id:
         return _delete_datasource(ds_id, caller_email)
 
@@ -267,6 +270,24 @@ def _delete_datasource(ds_id, caller_email=None):
     datasource_table.delete_item(Key={"uuid": ds_id})
     audit_log("DATASOURCE_DELETED", caller_email or "unknown", target=ds_id)
     return respond(200, {"message": "Data source deleted"})
+
+
+def _test_datasource(ds_id):
+    """Test a saved data source's credentials by running validation against stored config."""
+    if not datasource_table:
+        return respond(400, {"message": "DataSource table not configured"})
+    result = datasource_table.get_item(Key={"uuid": ds_id})
+    if "Item" not in result:
+        return respond(404, {"message": "Data source not found"})
+    ds_item = result["Item"]
+    ds_type = ds_item.get("dataSourceType", "")
+    config = decrypt_config(ds_item.get("config", {}))
+    validation = validate_datasource_auth(ds_type, config)
+    if validation is None:
+        return respond(200, {"success": False, "message": "No validation available for this auth type"})
+    if validation.get("valid"):
+        return respond(200, {"success": True, "message": f"Connection successful ({validation.get('user', '')})"})
+    return respond(200, {"success": False, "message": validation.get("error", "Credential validation failed. Edit the data source and check your credentials.")})
 
 
 def _oauth_callback(event, ds_id, caller_email=None):
