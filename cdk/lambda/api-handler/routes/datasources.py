@@ -282,6 +282,34 @@ def _test_datasource(ds_id):
     ds_item = result["Item"]
     ds_type = ds_item.get("dataSourceType", "")
     config = decrypt_config(ds_item.get("config", {}))
+
+    # For OAuth sources, test using the cached access token (or refresh if expired)
+    auth_type = config.get("authType", "pat")
+    if auth_type == "app" and "clientId" in config and "privateKey" not in config:
+        # This is an OAuth source — test with the access token
+        access_token = config.get("cachedAccessToken", "")
+        if not access_token:
+            return respond(200, {"success": False, "message": "No access token cached. Click Authorize to complete the OAuth flow."})
+        # Try the cached token
+        validation_error = _validate_oauth_token(ds_type, access_token, config)
+        if validation_error:
+            # Token might be expired — try refreshing
+            refresh_token = config.get("refreshToken", "")
+            if not refresh_token:
+                return respond(200, {"success": False, "message": f"Access token expired and no refresh token stored. Re-authorize the data source."})
+            # Attempt refresh
+            try:
+                new_token = _refresh_oauth_token(ds_type, config)
+                if new_token:
+                    recheck = _validate_oauth_token(ds_type, new_token, config)
+                    if not recheck:
+                        return respond(200, {"success": True, "message": "Connection successful (token refreshed)"})
+                return respond(200, {"success": False, "message": "Token refresh failed. Re-authorize the data source."})
+            except Exception as e:
+                return respond(200, {"success": False, "message": f"Token refresh failed: {str(e)[:100]}. Re-authorize the data source."})
+        return respond(200, {"success": True, "message": "Connection successful (OAuth token valid)"})
+
+    # For non-OAuth sources, use standard credential validation
     validation = validate_datasource_auth(ds_type, config)
     if validation is None:
         return respond(200, {"success": False, "message": "No validation available for this auth type"})
@@ -372,6 +400,45 @@ def _oauth_callback(event, ds_id, caller_email=None):
     except Exception as e:
         cid = log_error(f"OAuth token exchange failed for {ds_type}/{ds_id}", exc=e)
         return respond(500, {"message": "OAuth token exchange failed", "correlationId": cid})
+
+
+def _refresh_oauth_token(ds_type, config):
+    """Attempt to refresh an OAuth access token using stored refresh_token. Returns new access token or empty string."""
+    from urllib.parse import urlencode
+    refresh_token = config.get("refreshToken", "")
+    client_id = config.get("clientId", "")
+    client_secret = config.get("clientSecret", "")
+    if not all([refresh_token, client_id, client_secret]):
+        return ""
+
+    token_urls = {
+        "gitlab": (config.get("url") or "https://gitlab.com").rstrip("/") + "/oauth/token",
+        "jira": "https://auth.atlassian.com/oauth/token",
+        "asana": "https://app.asana.com/-/oauth_token",
+    }
+    token_url = token_urls.get(ds_type, "")
+    if not token_url:
+        return ""
+
+    token_data = {
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+        "client_id": client_id,
+        "client_secret": client_secret,
+    }
+    try:
+        if "atlassian" in token_url:
+            data = json.dumps(token_data).encode()
+            content_type = "application/json"
+        else:
+            data = urlencode(token_data).encode()
+            content_type = "application/x-www-form-urlencoded"
+        req = _Req(token_url, data=data, headers={"Content-Type": content_type})
+        with _safe_urlopen(req, timeout=10) as resp:
+            result = json.loads(resp.read().decode())
+        return result.get("access_token", "")
+    except Exception:
+        return ""
 
 
 def _validate_oauth_token(ds_type, access_token, config):
