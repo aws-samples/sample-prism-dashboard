@@ -7,6 +7,7 @@ import Alert from '@cloudscape-design/components/alert';
 import Badge from '@cloudscape-design/components/badge';
 import Box from '@cloudscape-design/components/box';
 import Spinner from '@cloudscape-design/components/spinner';
+import Flashbar from '@cloudscape-design/components/flashbar';
 import AiDashboardPage from './pages/AiDashboardPage';
 import UserManagementPage from './pages/UserManagementPage';
 import GithubActivityPage from './pages/GithubActivityPage';
@@ -41,6 +42,7 @@ export interface ActivityPageProps {
 
 function DashboardContent({ username, callerRole, callerEmail, callerRecord, onSignOut }: { username: string; callerRole: string; callerEmail: string; callerRecord: any; onSignOut: () => void }) {
   const [activePage, setActivePage] = useState('global-metrics');
+  const [notifications, setNotifications] = useState<any[]>([]);
   const { oauthStatus, refreshKey } = useOauthCallback(() => setActivePage('data-sources'));
   const [users, setUsers] = useState<any[]>([]);
   // Shared filter state (user / range / groupBy) — used by every activity page.
@@ -190,11 +192,31 @@ function DashboardContent({ username, callerRole, callerEmail, callerRecord, onS
                 const startDate = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
                 import('./api').then(({ usersApi }) => {
                   usersApi.refresh(callerEmail, startDate).then(() => {
-                    alert('Refresh queued — your data will update in a few minutes.');
+                    setNotifications([{
+                      type: 'success',
+                      dismissible: true,
+                      dismissLabel: 'Dismiss',
+                      onDismiss: () => setNotifications([]),
+                      content: 'Refresh queued — your data will update in a few minutes.',
+                      id: 'refresh-success',
+                    }]);
                   }).catch((err: any) => {
-                    alert(`Refresh failed: ${err.message || 'unknown error'}`);
+                    setNotifications([{
+                      type: 'error',
+                      dismissible: true,
+                      dismissLabel: 'Dismiss',
+                      onDismiss: () => setNotifications([]),
+                      content: `Refresh failed: ${err.message || 'unknown error'}`,
+                      id: 'refresh-error',
+                    }]);
                   });
                 });
+                setNotifications([{
+                  type: 'info',
+                  loading: true,
+                  content: 'Refreshing your data...',
+                  id: 'refresh-loading',
+                }]);
               }
             },
           },
@@ -202,6 +224,7 @@ function DashboardContent({ username, callerRole, callerEmail, callerRecord, onS
       />
       <AppLayout
         toolsHide
+        notifications={<Flashbar items={notifications} />}
         navigation={
           <SideNavigation
             header={{ text: 'Main Menu', href: '/' }}
