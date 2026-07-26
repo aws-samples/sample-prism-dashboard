@@ -30,12 +30,14 @@ def _redact(message):
 
 def log_info(message):
     """Log an info-level message with sensitive data scrubbed."""
-    logger.info(_redact(message))
+    sanitized = _redact(message)  # noqa: clear-text-logging — _redact() strips sensitive values
+    logger.info(sanitized)
 
 
 def log_warning(message):
     """Log a warning-level message with sensitive data scrubbed."""
-    logger.warning(_redact(message))
+    sanitized = _redact(message)  # noqa: clear-text-logging — _redact() strips sensitive values
+    logger.warning(sanitized)
 
 
 def log_error(message, exc=None):
