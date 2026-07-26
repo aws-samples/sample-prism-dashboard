@@ -254,18 +254,21 @@ class GitHubDataSource(BaseDataSource):
         from_dt = date_str + "T00:00:00Z"
         to_dt = (datetime.strptime(date_str, "%Y-%m-%d") + timedelta(days=1)).strftime("%Y-%m-%dT00:00:00Z")
 
-        # Get repos the user has pushed to recently (use events)
         deployments = []
         try:
-            # List repos for the authenticated user
-            req = Request(
-                "https://api.github.com/user/repos?per_page=100&sort=pushed&direction=desc",
-                headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"},
-            )
-            with safe_urlopen(req) as resp:
-                repos = json.loads(resp.read().decode())
-            if not isinstance(repos, list):
-                return []
+            # Get repos — method depends on auth type
+            if self._is_app_auth():
+                repos_raw = self._list_installation_repos(token)
+                repos = [{"full_name": r.get("full_name", "")} for r in repos_raw if r.get("full_name")]
+            else:
+                req = Request(
+                    "https://api.github.com/user/repos?per_page=100&sort=pushed&direction=desc",
+                    headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"},
+                )
+                with safe_urlopen(req) as resp:
+                    repos = json.loads(resp.read().decode())
+                if not isinstance(repos, list):
+                    return []
             for repo in repos[:20]:  # Limit to avoid timeouts
                 full_name = repo.get("full_name", "")
                 if not full_name:
@@ -434,10 +437,35 @@ class GitHubDataSource(BaseDataSource):
             print(f"[github] Error fetching team repos for {team_ref}: {e}")
         return repos
 
+    def _is_app_auth(self):
+        """Check if using GitHub App installation token auth."""
+        return self.config.get("authType") == "app"
+
     _user_teams_cache = None
 
+    def _list_installation_repos(self, token):
+        """List repos accessible to the GitHub App installation."""
+        repos = []
+        page = 1
+        try:
+            while True:
+                req = Request(
+                    f"https://api.github.com/installation/repositories?per_page=100&page={page}",
+                    headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"},
+                )
+                with safe_urlopen(req) as resp:
+                    data = json.loads(resp.read().decode())
+                items = data.get("repositories", [])
+                repos.extend(items)
+                if len(items) < 100:
+                    break
+                page += 1
+        except Exception as e:
+            print(f"[github] Error listing installation repos: {e}")
+        return repos
+
     def fetch_teams(self) -> list:
-        """Fetch the GitHub organization teams the user belongs to. Cached per instance."""
+        """Fetch the GitHub organization teams. Cached per instance."""
         if self._user_teams_cache is not None:
             return self._user_teams_cache
         token = self._get_token()
@@ -445,24 +473,45 @@ class GitHubDataSource(BaseDataSource):
             self._user_teams_cache = []
             return []
         try:
-            # GET /user/teams returns teams the authenticated user belongs to
-            # For PAT auth, this returns the PAT owner's teams across all orgs
-            req = Request(
-                "https://api.github.com/user/teams?per_page=100",
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "Accept": "application/vnd.github+json",
-                },
-            )
-            with safe_urlopen(req) as resp:
-                teams = json.loads(resp.read().decode())
-            if isinstance(teams, list):
-                self._user_teams_cache = sorted(set(
-                    f"{t.get('organization', {}).get('login', '')}/{t.get('slug', '')}"
-                    for t in teams if t.get('slug') and t.get('organization', {}).get('login')
-                ))
+            if self._is_app_auth():
+                # App auth: list org teams via /orgs/{org}/teams (installation-compatible)
+                # Get the org from installation repos
+                repos = self._list_installation_repos(token)
+                orgs = set(r.get("owner", {}).get("login", "") for r in repos if r.get("owner", {}).get("type") == "Organization")
+                teams = []
+                for org in orgs:
+                    if not org:
+                        continue
+                    page = 1
+                    while True:
+                        req = Request(
+                            f"https://api.github.com/orgs/{org}/teams?per_page=100&page={page}",
+                            headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"},
+                        )
+                        with safe_urlopen(req) as resp:
+                            org_teams = json.loads(resp.read().decode())
+                        if not isinstance(org_teams, list):
+                            break
+                        teams.extend(f"{org}/{t.get('slug', '')}" for t in org_teams if t.get("slug"))
+                        if len(org_teams) < 100:
+                            break
+                        page += 1
+                self._user_teams_cache = sorted(set(teams))
             else:
-                self._user_teams_cache = []
+                # PAT auth: GET /user/teams returns teams the authenticated user belongs to
+                req = Request(
+                    "https://api.github.com/user/teams?per_page=100",
+                    headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"},
+                )
+                with safe_urlopen(req) as resp:
+                    teams = json.loads(resp.read().decode())
+                if isinstance(teams, list):
+                    self._user_teams_cache = sorted(set(
+                        f"{t.get('organization', {}).get('login', '')}/{t.get('slug', '')}"
+                        for t in teams if t.get('slug') and t.get('organization', {}).get('login')
+                    ))
+                else:
+                    self._user_teams_cache = []
         except Exception as e:
             print(f"Error fetching GitHub teams: {e}")
             self._user_teams_cache = []
