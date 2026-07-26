@@ -111,9 +111,9 @@ export const DATA_SOURCE_REGISTRY: DataSourceDefinition[] = [
     icon: GITHUB_ICON,
     authOptions: [
       { value: 'pat', label: 'Personal Access Token', description: 'Use a GitHub PAT for authentication',
-        setupGuide: 'GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token. Grant read-only: Contents, Pull requests, Deployments. For team discovery, add Organization: Members (read). Classic token equivalent: repo + read:org.' },
+        setupGuide: '1. Go to GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens\n2. Click "Generate new token"\n3. Set Resource owner to your organization\n4. Set Repository access to "All repositories" (or select specific repos)\n5. Under Permissions, grant read-only access to: Contents, Pull requests, Deployments\n6. Under Organization permissions, grant read-only: Members (for team discovery)\n7. Click "Generate token" and copy it\n\nClassic token alternative: create with scopes repo (or public_repo) + read:org' },
       { value: 'app', label: 'GitHub App', description: 'Use a GitHub App with installation credentials',
-        setupGuide: 'Org Settings → Developer settings → GitHub Apps → New GitHub App. Permissions (read-only): Contents, Pull requests, Deployments; Organization: Members. Uncheck Webhook. After creation, note the App ID and generate a Private Key (.pem). Then Install the app on your org and note the Installation ID from the URL.' },
+        setupGuide: '1. Go to your org Settings → Developer settings → GitHub Apps → "New GitHub App"\n2. Name it (e.g., "Prism Dashboard")\n3. Under Permissions, grant read-only: Repository → Contents, Pull requests, Deployments; Organization → Members\n4. Uncheck "Active" under Webhook (not needed)\n5. Click "Create GitHub App" — note the App ID shown on the next page\n6. Scroll to "Private keys" → click "Generate a private key" — a .pem file downloads\n7. Go to "Install App" in the left sidebar → select your organization → Install\n8. After install, the URL will be: github.com/organizations/<org>/settings/installations/<ID>\n   The number at the end of this URL is your Installation ID\n\nYou\'ll need: App ID, the full contents of the .pem file, and the Installation ID' },
     ],
     configFields: [
       { key: 'pat', label: 'Personal Access Token', type: 'password', required: true, forAuth: 'pat' },
@@ -134,9 +134,9 @@ export const DATA_SOURCE_REGISTRY: DataSourceDefinition[] = [
     icon: GITLAB_ICON,
     authOptions: [
       { value: 'pat', label: 'Personal Access Token', description: 'Use a GitLab PAT for authentication',
-        setupGuide: 'GitLab → User Settings → Access tokens → Add new token. Scope: read_api (covers commits, MRs, deployments, group membership). For self-managed GitLab, also set the GitLab URL field below.' },
+        setupGuide: '1. Go to GitLab → click your avatar → Edit profile → Access tokens\n2. Click "Add new token"\n3. Name it (e.g., "Prism Dashboard")\n4. Under Scopes, select: read_api\n5. Click "Create personal access token" and copy it\n\nFor self-managed GitLab: also set the GitLab URL field in the next step (defaults to gitlab.com).\nA group access token (Settings → Access tokens on a group) also works for group-wide coverage.' },
       { value: 'app', label: 'OAuth App', description: 'Use an OAuth application for authorization',
-        setupGuide: 'GitLab → User Settings → Applications → Add new application. Redirect URI: https://<your-cloudfront-domain>/oauth-callback. Scope: read_api. Copy Application ID → Client ID and Secret → Client Secret. After saving here, click Authorize on the data source row.' },
+        setupGuide: '1. Go to GitLab → avatar → Edit profile → Applications (or group/instance-level Admin → Applications)\n2. Click "Add new application"\n3. Name it (e.g., "Prism Dashboard")\n4. Set Redirect URI to: https://<your-cloudfront-domain>/oauth-callback\n5. Under Scopes, check: read_api\n6. Click "Save application"\n7. Copy the Application ID → this is your Client ID\n8. Copy the Secret → this is your Client Secret\n9. After saving the data source here, click "Authorize" on its row to complete the OAuth flow\n\nFor self-managed GitLab: also set the GitLab URL field.' },
     ],
     configFields: [
       { key: 'pat', label: 'Personal Access Token', type: 'password', required: true, forAuth: 'pat' },
@@ -159,9 +159,9 @@ export const DATA_SOURCE_REGISTRY: DataSourceDefinition[] = [
     icon: JIRA_ICON,
     authOptions: [
       { value: 'pat', label: 'API Token', description: 'Use a Jira API token with email',
-        setupGuide: 'Sign in at id.atlassian.com → Security → Create and manage API tokens → Create API token. Use your Atlassian account email and the token below. The account needs browse access to the Jira projects you want tracked.' },
+        setupGuide: '1. Sign in at id.atlassian.com\n2. Go to Security → API tokens → "Create API token"\n3. Name it (e.g., "Prism Dashboard") and click Create\n4. Copy the token — you won\'t see it again\n\nYou\'ll also need:\n• Your Atlassian account email (the one you log in with)\n• Your Jira Base URL (e.g., https://your-org.atlassian.net)\n\nThe account needs browse access to the Jira projects you want tracked (including projects where incidents are filed).' },
       { value: 'app', label: 'OAuth 2.0 App', description: 'Use OAuth 2.0 for Jira Cloud',
-        setupGuide: 'Atlassian Developer Console (developer.atlassian.com) → Create → OAuth 2.0 integration. Add Jira API scopes: read:jira-work, read:jira-user, offline_access. Set callback URL to https://<your-cloudfront-domain>/oauth-callback. Copy Client ID and Client Secret. After saving here, click Authorize on the data source row.' },
+        setupGuide: '1. Go to developer.atlassian.com → click "Create" → "OAuth 2.0 integration"\n2. Name it (e.g., "Prism Dashboard")\n3. Under Permissions, click "Add" next to Jira API\n4. Add scopes: read:jira-work, read:jira-user\n5. Under Authorization, add Callback URL: https://<your-cloudfront-domain>/oauth-callback\n6. Go to Settings, copy the Client ID and Client Secret\n7. Important: also add the offline_access scope (required for refresh tokens since the ETL runs unattended)\n8. After saving the data source here, click "Authorize" on its row to complete the OAuth flow\n\nYou\'ll also need your Jira Base URL (e.g., https://your-org.atlassian.net).' },
     ],
     configFields: [
       { key: 'apiToken', label: 'API Token', type: 'password', required: true, forAuth: 'pat' },
@@ -187,9 +187,9 @@ export const DATA_SOURCE_REGISTRY: DataSourceDefinition[] = [
     icon: ASANA_ICON,
     authOptions: [
       { value: 'pat', label: 'Personal Access Token', description: 'Use an Asana PAT for authentication',
-        setupGuide: 'Asana → Settings → Apps → Developer apps → Manage developer apps → Create new token. The Workspace ID is required: find it at app.asana.com/api/1.0/workspaces (the gid value).' },
+        setupGuide: '1. Go to Asana → Settings (gear icon) → Apps → Developer apps\n2. Click "Manage developer apps" → "Create new token"\n3. Name it (e.g., "Prism Dashboard") and click Create\n4. Copy the token\n\nYou\'ll also need your Workspace ID:\n• Visit app.asana.com/api/1.0/workspaces while signed in\n• The "gid" value is your Workspace ID\n• Or find it in your Asana admin console URL' },
       { value: 'app', label: 'OAuth App', description: 'Use an OAuth application for authorization',
-        setupGuide: 'developers.asana.com → My apps → Create new app. OAuth → Redirect URL: https://<your-cloudfront-domain>/oauth-callback. Copy Client ID and Client Secret. After saving here, click Authorize on the data source row.' },
+        setupGuide: '1. Go to developers.asana.com → "My apps" → "Create new app"\n2. Name it (e.g., "Prism Dashboard")\n3. Under OAuth, set Redirect URL to: https://<your-cloudfront-domain>/oauth-callback\n4. Copy the Client ID and Client Secret\n5. After saving the data source here, click "Authorize" on its row to complete the OAuth flow\n\nYou\'ll also need your Workspace ID:\n• Visit app.asana.com/api/1.0/workspaces while signed in\n• The "gid" value is your Workspace ID' },
     ],
     configFields: [
       { key: 'pat', label: 'Personal Access Token', type: 'password', required: true, forAuth: 'pat' },
@@ -212,7 +212,7 @@ export const DATA_SOURCE_REGISTRY: DataSourceDefinition[] = [
     icon: CLAUDE_ICON,
     authOptions: [
       { value: 'apikey', label: 'Admin API Key', description: 'Use an Anthropic Admin API key',
-        setupGuide: 'Anthropic Console → Settings → Organization → Admin keys (org admin required). Create an Admin API key (sk-ant-admin…). This is distinct from regular inference API keys — it grants read access to org-wide usage and cost data.' },
+        setupGuide: '1. Sign in to the Anthropic Console (console.anthropic.com)\n2. Go to Settings → Organization → Admin keys\n   (You must be an org admin — regular users don\'t see this section)\n3. Click "Create admin key"\n4. Copy the key (starts with sk-ant-admin...)\n\nNote: This is different from a regular API key — Admin keys grant read access to org-wide usage and cost data, not model inference.' },
     ],
     configFields: [
       { key: 'apiKey', label: 'Admin API Key', type: 'password', required: true },

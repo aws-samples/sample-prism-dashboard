@@ -8,6 +8,7 @@ import Alert from '@cloudscape-design/components/alert';
 import Box from '@cloudscape-design/components/box';
 import Cards from '@cloudscape-design/components/cards';
 import Header from '@cloudscape-design/components/header';
+import Container from '@cloudscape-design/components/container';
 import { WIZARD_DS_TYPES, dsIcon, getDsDefinition } from '../datasourceRegistry';
 
 /* ------------------------------------------------------------------ */
@@ -196,18 +197,31 @@ export default function AddDataSourceWizard({ visible, onDismiss, onSubmit }: Ad
               <Alert type="warning">Please go back and select a data source type first.</Alert>
             ),
           },
-          /* ---- Step 3: Configuration details ---- */
+          /* ---- Step 3: Setup instructions (conditional) ---- */
+          ...(setupGuide ? [{
+            title: 'Setup instructions',
+            description: `Follow these steps to obtain your ${selectedAuthDef?.label || 'credentials'} for ${selectedDef?.label || 'this source'}.`,
+            isOptional: false,
+            content: (
+              <Container header={<Header variant="h2">How to get your credentials</Header>}>
+                <Box variant="p">
+                  {setupGuide.split('\n').map((line, i) => (
+                    <span key={i}>
+                      {line}
+                      <br />
+                    </span>
+                  ))}
+                </Box>
+              </Container>
+            ),
+          }] : []),
+          /* ---- Step 3/4: Configuration details ---- */
           {
             title: 'Configuration details',
             description: 'Provide the credentials and settings for your data source.',
             isOptional: false,
             content: (
               <SpaceBetween size="l">
-                {setupGuide && (
-                  <Alert type="info" header="How to get these credentials">
-                    {setupGuide}
-                  </Alert>
-                )}
                 {submitError && (
                   <Alert type="error" dismissible onDismiss={() => setSubmitError('')}>
                     {submitError}
