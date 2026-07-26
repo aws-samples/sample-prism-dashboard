@@ -3,6 +3,7 @@ import Modal from '@cloudscape-design/components/modal';
 import Wizard from '@cloudscape-design/components/wizard';
 import FormField from '@cloudscape-design/components/form-field';
 import Input from '@cloudscape-design/components/input';
+import Textarea from '@cloudscape-design/components/textarea';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import Alert from '@cloudscape-design/components/alert';
 import Box from '@cloudscape-design/components/box';
@@ -236,14 +237,25 @@ export default function AddDataSourceWizard({ visible, onDismiss, onSubmit }: Ad
                 </FormField>
                 {visibleFields.map((field) => (
                   <FormField key={field.key} label={field.label}>
-                    <Input
-                      type={field.type === 'password' ? 'password' : 'text'}
-                      value={configValues[field.key] || ''}
-                      onChange={({ detail }) =>
-                        setConfigValues((prev) => ({ ...prev, [field.key]: detail.value }))
-                      }
-                      placeholder={field.required ? 'Required' : 'Optional'}
-                    />
+                    {field.type === 'textarea' ? (
+                      <Textarea
+                        value={configValues[field.key] || ''}
+                        onChange={({ detail }) =>
+                          setConfigValues((prev) => ({ ...prev, [field.key]: detail.value }))
+                        }
+                        placeholder="Paste the full contents of the .pem file here"
+                        rows={6}
+                      />
+                    ) : (
+                      <Input
+                        type={field.type === 'password' ? 'password' : 'text'}
+                        value={configValues[field.key] || ''}
+                        onChange={({ detail }) =>
+                          setConfigValues((prev) => ({ ...prev, [field.key]: detail.value }))
+                        }
+                        placeholder={field.required ? 'Required' : 'Optional'}
+                      />
+                    )}
                   </FormField>
                 ))}
               </SpaceBetween>

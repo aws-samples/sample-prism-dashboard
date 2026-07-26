@@ -26,7 +26,7 @@ export interface DsAuthOption {
 export interface DsConfigField {
   key: string;
   label: string;
-  type: 'text' | 'password' | 'url';
+  type: 'text' | 'password' | 'url' | 'textarea';
   required: boolean;
   forAuth?: string;
 }
@@ -35,7 +35,7 @@ export interface DsConfigField {
 export interface EditConfigField {
   key: string;
   label: string;
-  type: 'text' | 'password' | 'url' | 'select';
+  type: 'text' | 'password' | 'url' | 'select' | 'textarea';
   required: boolean;
   options?: { label: string; value: string }[];
   showWhen?: { key: string; value: string };
@@ -121,7 +121,7 @@ export const DATA_SOURCE_REGISTRY: DataSourceDefinition[] = [
       { key: 'clientId', label: 'Client ID', type: 'text', required: true, forAuth: 'app' },
       { key: 'clientSecret', label: 'Client Secret', type: 'password', required: true, forAuth: 'app' },
       { key: 'installationId', label: 'Installation ID', type: 'text', required: true, forAuth: 'app' },
-      { key: 'privateKey', label: 'Private Key (PEM)', type: 'password', required: true, forAuth: 'app' },
+      { key: 'privateKey', label: 'Private Key (PEM)', type: 'textarea', required: true, forAuth: 'app' },
       { key: 'prodEnvironments', label: 'Production Environment Names (comma-separated, default: production,prod)', type: 'text', required: false },
     ],
   },
