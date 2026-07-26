@@ -196,6 +196,19 @@ export default function UserManagementPage() {
         </Header>
       }
     >
+      {etlStatus && etlStatus.status !== 'idle' && (
+        <Box margin={{ bottom: 'm' }}>
+          {etlStatus.status === 'running' ? (
+            <Alert type="info" statusIconAriaLabel="Running">
+              <strong>ETL in progress</strong> — started {etlStatus.startedAt ? new Date(etlStatus.startedAt).toLocaleTimeString() : 'recently'}, {etlStatus.usersCompleted || 0}/{etlStatus.usersQueued || '?'} users completed. Triggered by {etlStatus.triggeredBy || 'unknown'}.
+            </Alert>
+          ) : etlStatus.status === 'completed' ? (
+            <Alert type="success" statusIconAriaLabel="Complete">
+              <strong>Last ETL completed</strong> at {etlStatus.completedAt ? new Date(etlStatus.completedAt).toLocaleString() : 'unknown'} — {etlStatus.usersCompleted || 0} users processed ({etlStatus.startDate === 'incremental' ? 'incremental' : `from ${etlStatus.startDate}`}). Triggered by {etlStatus.triggeredBy || 'unknown'}.
+            </Alert>
+          ) : null}
+        </Box>
+      )}
       <Container>
         {error && <Alert type="error" dismissible onDismiss={() => setError('')}>{error}</Alert>}
         <Table
