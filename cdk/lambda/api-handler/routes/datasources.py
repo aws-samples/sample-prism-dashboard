@@ -127,7 +127,16 @@ def _list_datasources():
             "uuid": ds["uuid"],
             "dataSourceType": ds.get("dataSourceType", ""),
             "name": ds.get("name", ds.get("dataSourceType", "")),
-            "authStatus": ds.get("config", {}).get("authStatus", "pending") if ds.get("config", {}).get("authType") == "app" else "configured",
+            # OAuth sources (GitLab/Jira/Asana OAuth App) need explicit authorization via callback.
+            # GitHub App uses server-to-server JWT — no OAuth needed; always "configured".
+            # Detect OAuth sources: authType == 'app' AND config has clientId + clientSecret but NOT privateKey.
+            "authStatus": (
+                ds.get("config", {}).get("authStatus", "pending")
+                if ds.get("config", {}).get("authType") == "app"
+                and "clientId" in ds.get("config", {})
+                and "privateKey" not in ds.get("config", {})
+                else "configured"
+            ),
             "config": {
                 k: v for k, v in ds.get("config", {}).items()
                 if k not in ("pat", "clientSecret", "refreshToken", "apiToken", "privateKey")
