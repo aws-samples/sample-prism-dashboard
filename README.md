@@ -10,6 +10,8 @@
 
 A self-hosted analytics platform for tracking developer productivity and AI tool adoption. [codeburn](https://github.com/getagentseal/codeburn) is the recommended AI-usage data provider: one OTLP export covers tokens, cost, model, and tool for 35+ AI coding tools, optionally blended with authoritative provider APIs (Anthropic Admin API, Kiro service) for exact figures. AI usage is correlated against delivery metrics from GitHub, GitLab, Jira, and Asana — including all four DORA metrics (deployment frequency and lead time from GitHub/GitLab deployments; change failure rate and MTTR from Jira incidents). Deploy to your own AWS account with a single CDK command.
 
+> 📖 This README covers **deploying** the platform. For using it after deployment — roles, admin setup, data source credentials, teams, DORA/incident configuration, and troubleshooting — see the **[User Manual](USER_MANUAL.md)**.
+
 ## Features
 
 - **codeburn OTLP ingestion (recommended AI-usage provider)** — Developers run `codeburn sync` and per-tool AI tokens/cost/model usage flows in for 35+ AI coding tools (Claude Code, Kiro, Cursor, Codex, Gemini, Copilot, …) — one integration instead of one per vendor
