@@ -24,7 +24,7 @@ from auth import (
     DATA_SCOPED_USERID_PATHS,
     DATA_SCOPED_EMAIL_PATHS,
 )
-from db import table, teams_table, respond, find_user_by_id, count_admins
+from db import table, teams_table, global_aggregations_table, respond, find_user_by_id, count_admins
 from safe_logging import log_error
 from audit import audit_log
 from routes.users import handle_users
