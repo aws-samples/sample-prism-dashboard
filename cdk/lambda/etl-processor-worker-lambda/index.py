@@ -25,7 +25,7 @@ import regen_signals
 import sprints
 import team_repos
 import user_aggregation
-from tables import datasource_table, user_table, scan_all
+from tables import datasource_table, user_table, global_aggregations_table, scan_all
 
 
 def _build_user(message):
